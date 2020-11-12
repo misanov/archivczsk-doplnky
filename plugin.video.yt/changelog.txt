@@ -1,0 +1,4 @@
+[B]1.0:[/B]
+Initial version (misanov)
+- vyhledavani s historii
+- menu na vyhledanem videu umozni zobrazit videa kanalu nebo ho pridat/ulozit na hlavni stranku
