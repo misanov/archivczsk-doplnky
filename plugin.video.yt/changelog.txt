@@ -1,3 +1,6 @@
+[B]1.1:[/B]
+Opravena chyba vyhledavani (misanov)
+
 [B]1.0:[/B]
 Initial version (misanov)
 - vyhledavani s historii
