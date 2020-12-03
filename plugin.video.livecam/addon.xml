@@ -1,0 +1,17 @@
+<?xml version='1.0' encoding='utf-8'?>
+<addon id="plugin.video.livecam" name="LiveCam" provider-name="Michal Novotny" version="1.0">
+  <requires>
+    <import addon="xbmc.python" version="2.1.0" />
+    <import addon="script.module.stream.resolver" version="1.6.22" />
+  </requires>
+  <extension library="default.py" point="xbmc.python.pluginsource" provides="video">
+    <provides>video</provides>
+  </extension>
+  <extension point="xbmc.addon.metadata">
+    <platform>all</platform>
+    <summary>Live cameras video plugin</summary>
+    <description>Plugin to search and show live cameras videos</description>
+    <description lang="cs">Plugin pro vyhledávání a spouštění živých videí z kamer</description>
+    <description lang="sk">Plugin pre vyhľadavanie a spúštěnie videí z kamer</description>
+  </extension>
+</addon>
