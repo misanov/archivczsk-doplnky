@@ -15,6 +15,7 @@ from Components.config import config
 from Plugins.Extensions.archivCZSK.archivczsk import ArchivCZSK
 from Plugins.Extensions.archivCZSK.engine.tools.util import unescapeHTML
 from Plugins.Extensions.archivCZSK.engine.client import add_video, add_dir, getTextInput, add_operation
+from Plugins.Extensions.archivCZSK.engine import client
 
 _UserAgent_ = 'Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:60.0) Gecko/20100101 Firefox/60.0'
 addon =  ArchivCZSK.get_xbmc_addon('plugin.video.mall.tv')
@@ -271,3 +272,5 @@ elif mode==7:
         ZIVE(page)
 elif mode==9:
         VIDEOLINK(url)
+
+if len(client.GItem_lst[0]) == 0: addDir(None,'',1,None)
