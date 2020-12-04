@@ -338,10 +338,7 @@ def process_seasons(mediaList):
 		info = get_info(media['_source'])
 		if 'info_labels' in media['_source']:
 			title = str(int(media['_source']['info_labels']['season'])).zfill(2)+' '
-		if 'info_labels' in media['_source'] and 'episode' in media['_source']['info_labels'] and not media['_source']['info_labels']['episode']:
-			addDir(info['title'], build_plugin_url({ 'action': 'episodes', 'action_value': media['_id'] }), 1, info['poster'], None, None, { 'plot': info['plot'], 'rating': info['rating'], 'duration': info['duration'], 'year': info['year'], 'genre': info['genres']})
-		else:
-			addDir(title+info['title'], build_plugin_url({ 'action': 'series.streams', 'action_value': media['_id'] }), 1, info['poster'], None, None, { 'plot': info['plot'], 'rating': info['rating'], 'duration': info['duration'], 'year': info['year'], 'genre': info['genres']})
+		addDir(info['title'], build_plugin_url({ 'action': 'episodes', 'action_value': media['_id'] }), 1, info['poster'], None, None, { 'plot': info['plot'], 'rating': info['rating'], 'duration': info['duration'], 'year': info['year'], 'genre': info['genres']})
 
 def process_movies_series(mediaList,sort=0):
 	for media in mediaList:
@@ -618,6 +615,7 @@ except:
 #writeLog('NAME: '+str(name))
 #writeLog('ACT: '+str(action))
 #writeLog('ACTVAL: '+str(action_value))
+#print params
 
 menu = {
 	'root': [
