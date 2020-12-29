@@ -1,3 +1,5 @@
+2020-08-29
+ * Pridany nazvy poradu do ziveho vysilani
 2020-08-12
  * Pridano zive vysilani
 2020-05-30

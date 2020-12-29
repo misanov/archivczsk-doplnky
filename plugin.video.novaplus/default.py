@@ -20,7 +20,6 @@ profile = addon.getAddonInfo('profile')
 __settings__ = addon
 home = __settings__.getAddonInfo('path')
 icon =  os.path.join( home, 'icon.png' )
-fanart = os.path.join( home, 'fanart.jpg' )
 
 def get_url(url):
     req = urllib2.Request(url)
@@ -69,11 +68,18 @@ class loguj(object):
             print "####NOVAPLUS#### [" + type + "] " + msg
 
 def OBSAH():
-    addDir('ŽIVĚ - Nova','nova_avod',7,'https://upload.wikimedia.org/wikipedia/commons/2/2f/TV_Nova_logo_2017.png',1)
-    addDir('ŽIVĚ - Nova Cinema','nova_cinema_avod',7,'https://upload.wikimedia.org/wikipedia/commons/c/cd/Nova_Cinema_logo.png',1)
-    addDir('ŽIVĚ - Nova Action','nova_action_avod',7,'https://upload.wikimedia.org/wikipedia/commons/d/d2/Nova-action-logo-2017.png',1)
-    addDir('ŽIVĚ - Nova Gold','nova_gold_avod',7,'https://upload.wikimedia.org/wikipedia/commons/7/7f/Nova_Gold_logo.png',1)
-    addDir('ŽIVĚ - Nova 2','nova_2_avod',7,'https://upload.wikimedia.org/wikipedia/commons/3/34/Nova_2_logo-600x207.png',1)
+    ch = {}
+    html = get_url('https://novaplus.nova.cz/sledujte-zive/1-nova')
+    sections = re.findall("class=\"js-channels-navigation-carousel(.*?)s-content-wrapper", html, re.S)
+    for section in sections:
+        chans = re.findall("img.*?alt=\"(.*?)\".*?<h4.*?>(.*?)</h4>.*?e-time-start\">(.*?)<.*?e-time-end\">(.*?)<", section, re.S)
+        for chan in chans:
+            ch[chan[0]] = ' [COLOR YELLOW](' + chan[1].replace("&nbsp;", " ") + ' ' + chan[2] + ' - ' + chan[3] + ')[/COLOR]'
+    addDir('ŽIVĚ - Nova'+ch.get('Nova',''),'nova_avod',7,'https://upload.wikimedia.org/wikipedia/commons/2/2f/TV_Nova_logo_2017.png',1)
+    addDir('ŽIVĚ - Nova Cinema'+ch.get('Nova Cinema',''),'nova_cinema_avod',7,'https://upload.wikimedia.org/wikipedia/commons/c/cd/Nova_Cinema_logo.png',1)
+    addDir('ŽIVĚ - Nova Action'+ch.get('Nova Action',''),'nova_action_avod',7,'https://upload.wikimedia.org/wikipedia/commons/d/d2/Nova-action-logo-2017.png',1)
+    addDir('ŽIVĚ - Nova Gold'+ch.get('Nova Gold',''),'nova_gold_avod',7,'https://upload.wikimedia.org/wikipedia/commons/7/7f/Nova_Gold_logo.png',1)
+    addDir('ŽIVĚ - Nova 2'+ch.get('Nova 2',''),'nova_2_avod',7,'https://upload.wikimedia.org/wikipedia/commons/3/34/Nova_2_logo-600x207.png',1)
     addDir('Úvodní stránka','http://novaplus.nova.cz/',6,icon,1)
     addDir('Seriály a pořady','http://novaplus.nova.cz/porady/',5,icon,1)
     addDir('Televizní noviny','http://novaplus.nova.cz/porad/televizni-noviny',2,icon,1)
@@ -254,7 +260,7 @@ def VIDEOLINK(url,name):    # rewrite by MN
         addDir(title.replace('&nbsp;', ' '),url,2,thumb,1)
 
 def LIVE(url):
-    add_video(name,'https://nova-live.ssl.cdn.cra.cz/channels/'+url+'/playlist/cze.m3u8',live=True)
+    add_video(re.sub("[\[].*?[\]]", "", name),'https://nova-live.ssl.cdn.cra.cz/channels/'+url+'/playlist/cze.m3u8',infoLabels={'title': re.sub("[\[].*?[\]]", "", name)},live=True)
 
 url=None
 name=None

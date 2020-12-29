@@ -56,13 +56,18 @@ def main_menu(pageurl, list_only=False):
 
 
 def shows_menu(pageurl, list_only=False):
-    add_dir("ŽIVĚ - Prima", {'action': 'PLAY', 'linkurl': 'https://prima.iprima.cz'}, None, video_item=True)
-    add_dir("ŽIVĚ - Prima COOL", {'action': 'PLAY', 'linkurl': 'https://cool.iprima.cz'}, None, video_item=True)
-    add_dir("ŽIVĚ - Prima MAX", {'action': 'PLAY', 'linkurl': 'https://max.iprima.cz'}, None, video_item=True)
-    add_dir("ŽIVĚ - Prima KRIMI", {'action': 'PLAY', 'linkurl': 'https://krimi.iprima.cz'}, None, video_item=True)
-    add_dir("ŽIVĚ - Prima LOVE", {'action': 'PLAY', 'linkurl': 'https://love.iprima.cz'}, None, video_item=True)
-    add_dir("ŽIVĚ - Prima ZOOM", {'action': 'PLAY', 'linkurl': 'https://zoom.iprima.cz'}, None, video_item=True)
-    add_dir("ŽIVĚ - CNN Prima News", {'action': 'PLAY', 'linkurl': 'https://cnn.iprima.cz/vysilani'}, None, video_item=True)
+    ch = {}
+    html = _play_parser.get_data_cached('https://www.iprima.cz', _play_parser.useCache, 3)
+    sections = re.findall("molecule--list--live-broadcasting-list--item\".*?<a .*?data-trueview-id=\"HP - TV Channels - (.*?)\".*?--item--time\">(.*?)</span>(.*?)</a>.*?--item--time\">(.*?)</span>", html, re.S)
+    for chan in sections:
+        ch[chan[0]] = ' [COLOR YELLOW](' + chan[2].replace("&nbsp;", " ").strip() + ' ' + chan[1] + ' - ' + chan[3] + ')[/COLOR]'
+    add_dir("ŽIVĚ - Prima"+ch.get('prima',''), {'action': 'PLAY', 'linkurl': 'https://prima.iprima.cz'}, None, video_item=True)
+    add_dir("ŽIVĚ - Prima COOL"+ch.get('cool',''), {'action': 'PLAY', 'linkurl': 'https://cool.iprima.cz'}, None, video_item=True)
+    add_dir("ŽIVĚ - Prima MAX"+ch.get('max',''), {'action': 'PLAY', 'linkurl': 'https://max.iprima.cz'}, None, video_item=True)
+    add_dir("ŽIVĚ - Prima KRIMI"+ch.get('krimi',''), {'action': 'PLAY', 'linkurl': 'https://krimi.iprima.cz'}, None, video_item=True)
+    add_dir("ŽIVĚ - Prima LOVE"+ch.get('love',''), {'action': 'PLAY', 'linkurl': 'https://love.iprima.cz'}, None, video_item=True)
+    add_dir("ŽIVĚ - Prima ZOOM"+ch.get('zoom',''), {'action': 'PLAY', 'linkurl': 'https://zoom.iprima.cz'}, None, video_item=True)
+    add_dir("ŽIVĚ - CNN Prima News"+ch.get('cnn',''), {'action': 'PLAY', 'linkurl': 'https://cnn.iprima.cz/vysilani'}, None, video_item=True)
     add_dir("VŠECHNY POŘADY", {'action': 'CATEGORIES', 'linkurl': pageurl}, None)
     add_dir("HLAVNÍ ZPRÁVY", {'action': 'SHOW-NAV', 'linkurl': '//cnn.iprima.cz/porady/hlavni-zpravy'}, None)
 #    add_search_menu()

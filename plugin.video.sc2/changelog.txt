@@ -1,3 +1,11 @@
+2020-12-26 [2.1.21]
+ * uprava zobrazeni vyberu streamu
+ * uprava zobrazeni titulu pri prehravani
+ * oprava zobrazeni koncertu
+
+2020-12-21 [2.1.20]
+ * vanocni nadilka a ikona
+
 2020-12-11 [2.1.19]
  * oprava zobrazeni a filtru jazyka
  * menu Trailer zobrazi vsechny dostupne videa

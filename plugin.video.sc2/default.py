@@ -18,6 +18,8 @@ from const import country_lang, genre_lang, language_lang
 addon = ArchivCZSK.get_xbmc_addon('plugin.video.sc2')
 addon_userdata_dir = addon.getAddonInfo('profile')+'/'
 home = addon.getAddonInfo('path')
+christmas = datetime.date(datetime.date.today().year, 12, 20) <= datetime.date.today() <= datetime.date(datetime.date.today().year+1, 1, 6)
+#icon = os.path.join(home, 'icon-christmas.png')
 icon = os.path.join(home, 'icon.png')
 hotshot_url = 'https://plugin.sc2.zone'
 ws_api = 'https://webshare.cz/api'
@@ -84,7 +86,7 @@ def login():
 def get_stream_url(ident):
 	token = login()
 	if token == "":
-		client.add_operation("SHOW_MSG", {'msg': addon.getLocalizedString(40501), 'msgType': 'error', 'msgTimeout': 1, 'canClose': True })
+		client.add_operation("SHOW_MSG", {'msg': addon.getLocalizedString(40501), 'msgType': 'error', 'msgTimeout': 5, 'canClose': True })
 	req = ws_api_request('/file_link/', { 'wst': token, 'ident': ident })
 	xml = ET.fromstring(req.text)
 	if not xml.find('status').text == 'OK':
@@ -156,10 +158,10 @@ def convert_size(size_bytes):
 
 def convert_bitrate(mbit):
 	if mbit == 0 or mbit is None:
-		return "0 Mbit/s"
+		return "0 Mbps"
 	p = math.pow(1024, 2)
 	s = round(mbit / p, 2)
-	return "%s %s" % (s, "Mbit/s")
+	return "%s %s" % (s, "Mbps")
 
 def get_info(media,st=False):
 	try:
@@ -169,8 +171,13 @@ def get_info(media,st=False):
 	year = media['info_labels']['year'] if 'info_labels' in media and 'year' in media['info_labels'] else 0
 	if year == 0 and 'aired' in media['info_labels'] and media['info_labels']['aired']: year = media['info_labels']['aired'][0:4]
 	alangs = media.get("available_streams",{}).get("languages",{}).get("audio",{}).get("map",[])
+	aset = set(alangs)
+	alangs = list(aset)
+	alangs.sort()
 	langs = (', '.join(alangs)).upper()
 	labels = {}
+	parent = ""
+	fulltitle = ""
 	if 'i18n_info_labels' in media:
 		for label in media['i18n_info_labels']:
 			labels[label['lang']] = label
@@ -181,10 +188,17 @@ def get_info(media,st=False):
 			for lang in langs_pref:
 				if title == '' and lang in labels and 'title' in labels[lang] and re.sub(r'[^a-z0-9]','',strip_accents(labels[lang]['title']).lower())[:len(v)] == v.lower():
 					title = labels[lang]['title']
+					parent = labels[lang].get('parent_titles',[])[0] + " - " if len(labels[lang].get('parent_titles',[])) > 0 else ""
 		title = media['info_labels']['originaltitle'] if title == '' and 'info_labels' in media and 'originaltitle' in media['info_labels'] else title
 	else:
 		title = media['i18n_info_labels'][0]['title'] if 'i18n_info_labels' in media and 'title' in media['i18n_info_labels'][0] else ""
+		parent = media.get('i18n_info_labels',[])[0].get('parent_titles',[])[0] + " - " if len(media.get('i18n_info_labels',[])[0].get('parent_titles',[])) > 0 else ""
 		title = ' ' + media['info_labels']['originaltitle'] + langs if 'info_labels' in media and 'originaltitle' in media['info_labels'] and title == "" else title
+	setitle = ""
+	if 'info_labels' in media and 'episode' in media['info_labels'] and media['info_labels'].get('mediatype') != "movie":
+		if int(media['info_labels']['season']) == 0: setitle = str(int(media['info_labels']['episode'])).zfill(2)+' '
+		elif int(media['info_labels']['season']) != 0: setitle = str(int(media['info_labels']['season'])).zfill(2)+'x'+str(int(media['info_labels']['episode'])).zfill(2)+' '
+	fulltitle = parent + setitle + title + ' (' + str(year) + ')'
 	if not st: title += ' - ' + langs + ' (' + str(year) + ')'
 	genres = ""
 	if 'info_labels' in media and 'genre' in media['info_labels']:
@@ -207,7 +221,7 @@ def get_info(media,st=False):
 		try: duration = media['stream_info']['video']['duration'] or 0
 		except:	pass
 	if 'play_count' in media: plot += "{"+str(media['play_count'])+"}"
-	return {'title': title, 'plot': plot+dadded, 'rating': rating, 'duration': duration, 'poster': poster, 'year': year, 'genres': genres, 'langs': langs}
+	return {'title': title, 'plot': plot+dadded, 'rating': rating, 'duration': duration, 'poster': poster, 'year': year, 'genres': genres, 'langs': langs, 'parent': parent, 'fulltitle': fulltitle}
 
 def add_paging(page, pageCount):
 	if page <= pageCount:
@@ -414,53 +428,65 @@ def process_az(mediaList):
 			addDir(az['key']+' ('+str(az['doc_count'])+')', build_plugin_url({ 'action': action[0], 'action_value': m+','+az['key'] }), 1, None, None, None)
 
 def show_stream_dialog(id,ss=None,ep=None):
-	media = get_media_data('/api/media/filter/ids?id='+id,'')
-	if 'data' not in media or len(media['data'])==0: return False
-	info = get_info(media['data'][0]['_source'],st=True)
+	audios = { 1: '1.0', 2: '2.0', 6: '5.1', 8: '7.1'}
+	pname = name
+	media = get_media_data('/api/media/'+id,'')
+	if 'info_labels' in media:
+		info = get_info(media,st=True)
+		if info['fulltitle']:
+			pname = info['fulltitle']
+	else:
+		info = {}
 	streams = get_media_data('/api/media/'+id+'/streams','')
 	for stream in streams:
 		title = ""
-		if 'info_labels' in media['data'][0]['_source'] and 'episode' in media['data'][0]['_source']['info_labels'] and media['data'][0]['_source']['info_labels']['episode']:
-			title += str(int(media['data'][0]['_source']['info_labels']['season'])).zfill(2)+'x'+str(int(media['data'][0]['_source']['info_labels']['episode'])).zfill(2)+' '
+		desc = ""
 		if addon.getSetting('filter_hevc') == 'true' and 'video' in stream and 'codec' in stream['video'][0] and stream['video'][0]['codec'].upper() == 'HEVC': continue
 		if isFilterLangStream(stream): continue
 		if addon.getSetting('max_size') != '0' and 'size' in stream and sizes[int(addon.getSetting('max_size'))]*1024*1024*1024 < stream['size']: continue
 		if addon.getSetting('max_bitrate') != '0' and 'size' in stream and 'video' in stream and 'duration' in stream['video'][0] and bitrates[int(addon.getSetting('max_bitrate'))]*1024*1024 < stream['size'] / stream['video'][0]['duration'] * 8: continue
 		if addon.getSetting('max_quality') != '0' and 'video' in stream and 'height' in stream['video'][0] and qualities[int(addon.getSetting('max_quality'))] < stream['video'][0]['height']: continue
 		auds = []
-		for audio in stream['audio']:
+		for audio in stream.get('audio',{}):
 			if 'language' in audio:
-				if audio['language'] == "": auds.append("??")
-				else: auds.append(audio['language'])
+				if audio['language'] == "": auds.append(audio.get('codec','')+" "+audios.get(audio.get('channels',2),"")+" ??")
+				else: auds.append(audio.get('codec','')+" "+audios.get(audio.get('channels',2),"")+" "+audio['language'])
 		audset = set(auds)
 		auds = list(audset)
 		auds.sort()
-		bit_rate = ' - '+convert_bitrate(stream['size'] / stream['video'][0]['duration'] * 8) if addon.getSetting('show_bitrate')=='true' and 'size' in stream and 'video' in stream and 'duration' in stream['video'][0] else ''
-#		title += '['+str(stream['video'][0]['height'])+'p] ' if 'video' in stream and 'height' in stream['video'][0] else ''
-		title += '['+resolution_to_quality(stream['video'][0])+'] ' if 'video' in stream and 'height' in stream['video'][0] else ''
-		title += '['+str(stream['video'][0]['codec'])+'] ' if addon.getSetting('show_codec')=='true' and 'video' in stream and 'codec' in stream['video'][0] else ''
-		title += '[3D] ' if 'video' in stream and '3d' in stream['video'][0] and stream['video'][0]['3d']=='true' else ''
-		title += info['title']
-		title += ' - '+(', '.join(auds)).upper() if len(auds)>0 else ''
+		subs = []
+		for sub in stream.get('subtitles',{}):
+			if 'language' in sub:
+				forced = ""
+#				forced = "FORCED " if sub.get('forced',False) else ""
+				if sub['language'] == "": subs.append(forced+"??")
+				else: subs.append(forced+sub['language'])
+		subset = set(subs)
+		subs = list(subset)
+		subs.sort()
+		bit_rate = ', '+convert_bitrate(stream['size'] / stream['video'][0]['duration'] * 8) if addon.getSetting('show_bitrate')=='true' and 'size' in stream and 'video' in stream and 'duration' in stream['video'][0] else ''
+		title += '['
+		title += resolution_to_quality(stream['video'][0]) if 'video' in stream and 'height' in stream['video'][0] else ''
+		title += ' '+str(stream['video'][0]['codec']) if addon.getSetting('show_codec')=='true' and 'video' in stream and 'codec' in stream['video'][0] else ''
+		title += ' 3D' if 'video' in stream and '3d' in stream['video'][0] and stream['video'][0]['3d']=='true' else ''
+		title += '] '
+#		title += info['title']+' ' if 'title' in info else ''
+		title += (', '.join(auds)).upper() if len(auds)>0 else ''
+		title += " (tit. "+(', '.join(subs)).upper()+")" if len(subs)>0 else ''
+		desc += "audio: "+(', '.join(auds)).upper()+"\n" if len(auds)>0 else ''
+		desc += "tit.: "+(', '.join(subs)).upper()+"\n" if len(subs)>0 else ''
 		title += ' ('+convert_size(stream['size'])+bit_rate+')' if 'size' in stream else ''
 		duration = stream['video'][0]['duration'] if 'video' in stream and 'duration' in stream['video'][0] else 0
-		addDir(title,build_plugin_url({ 'action': 'play', 'action_value': stream['ident'], 'name': title.encode('utf-8') }), 1, info['poster'], None, None, { 'plot': info['plot'], 'rating': info['rating'], 'duration': duration, 'year': info['year'], 'genre': info['genres']})
-#		gurl = get_stream_url(stream['ident'])
-#		if gurl is not None:
-#			add_video(title,gurl,None,info['poster'],infoLabels={ 'plot': info['plot'], 'rating': info['rating'], 'duration': duration, 'year': info['year'], 'genre': info['genres']})
-#	client.GItem_lst[0].sort(key=lambda x:x.name)
+		if info:
+			addDir(title,build_plugin_url({ 'action': 'play', 'action_value': stream['ident'], 'name': pname }), 1, info['poster'], None, None, { 'title': info['title'], 'plot': info['plot'], 'rating': info['rating'], 'duration': duration, 'year': info['year'], 'genre': info['genres']})
+		else:
+			addDir(title,build_plugin_url({ 'action': 'play', 'action_value': stream['ident'], 'name': pname }), 1, None, None, None, {'plot': desc, 'duration': duration})
 
 def play(ident,title):
 	gurl = get_stream_url(ident)
 	if gurl is not None:
-		add_video(title,gurl,None,None)
-#		from Plugins.Extensions.archivCZSK.engine.player.player import Player
-#		from Plugins.Extensions.archivCZSK.engine.items import PVideo
-#		it = PVideo()
-#		it.name = title
-#		it.url = gurl
-#		Player(session).play_item(item = it)
-#		client.refresh_screen()
+		name = nparams['name']
+		add_video(title,gurl,None,None,filename=name,infoLabels={'title': name})
 
 def play_trailer(id):
 	media = get_media_data('/api/media/filter/ids?id='+id,'')
@@ -619,6 +645,8 @@ print params
 menu = {
 	'root': [
 		build_item(addon.getLocalizedString(30204), 'listsearch', ''),
+		build_item('Vánoce', 'vanoce', '0'),
+		build_item('Vánoce (Česko)', 'vanocecr', '0'),
 		build_item(addon.getLocalizedString(30200), 'folder','movies'),
 		build_item(addon.getLocalizedString(30201), 'folder', 'series'),
 		build_item(addon.getLocalizedString(30174), 'folder', 'concerts'),
@@ -693,6 +721,16 @@ elif action[0] == 'csfdtopf':
 	get_csfd_topf(action_value[0])
 elif action[0] == 'csfdtops':
 	get_csfd_tops(action_value[0])
+elif action[0] == 'vanoce':
+	data = get_media_data('/api/media/filter/service?query=DYSwtiAuC8CsAMAySBPADgU2gUgEwEFEA3AQ2AFcswB7IkDbAZn1kYDZHizLoa6HmuAIwBOACy4RXClVr0m+NmJFDpPPvOZDYogByrSM3nIH4hY2GI5rZ-BeZG7cN43eZixAdjEuNpkRysviYKuLhijCKwwW74AfDeMZpmIoy6np5JpkIcKln2qVGchuohzIxhysXctsmiuPDWJbXZViLwSM2uyWyNIpldfgpsQuzVRkPllmIGNd2mjLC4nrr55WwN0YNl+Oy9W3OTZmwIA4c7sGxXUtuxuvD9a-gWnjfnsTOLPrfJsLobqx+pksKzOEx2vRW41KsV6bCiTz+6Se5k8QmcQOG5ieIwO4NijAS0JaCh0jie4legPeyRE4VgeJhyUYkQaFP+LKe7Ak3xppjhnk6fIUjC89wpG0SmOYG1wlhRJ3gjJJzFgGTE1PxzNYuGJ8wUKngixRUXl0t2rwkXLYGTeWuBIzZ5v6I1m9oN7U8GOFWisfz1RwC7DdTIWngqIZVZgjFieuF0rDtoZFvV0SajSPCOPgukiTxWjjBya0Om0muLZgkLPT+plCScKKsug1T3uVkR6WWFK8vPdzAynOdubEQr70Zykdrlai5Od7Tz5shDMb7HF5u0QnMAZ2AQQvYr5jVI7j4QeyqnuCuwnLUblvRzceb8e79zY3ai+9vp-EcbY-yuv6ypORyiGknhvuuEQZDeF6XB056BicDbmpU8Cxihf7wjBRxhLq6E+vgl6ytusSgTmJHJGEHQPCeI7tHGpyXLRjQUdkEYrMx4HMbo2E7Je-wiDWOFXKMo4VmEiwVI2sABLxsQSawrGhH+gpiVGkIcShuqsJ+U6jDJoommkSxGXScmUaeaa0YwngIXx37emOQg5toQk7KIMxCOZDp5EOFi6SBGoyW5BIjAuBGOModmkakCbRXUsXOY2zk2hS2jwI5B5WI0al6bFUoEQOyhxp5m5PF4JytkWUYjrlgbtBs5WLPFCyEiFyTge1CxKsBEKLHVFwPL18mLA0A2kWh409KkKIPAEXJqlx66bhEU38jZa2khsXWhOY8beQoFXwMNyT6F6HZOCdphppVzqjTito7cwzYmeaKw6Pm6QBXxGSjE9Zi5jam1aCtToRTxmVfuihKIuGHQoqwCafSMrY5P9dIfVpLyQ3p+zA2YaGSMxHgUjmaqAaM1VTgOLWkvO+PmDxP4YY6B3MIJzn468uoI5u5OQUGtOquIVnmhIa4EZCs4EaBaZXfYTbzZBOi9HG4ZRFTgaivLWiTWzhHfvrsu2VyjA5AqCD-doV5cvo+vLGiqXmosGxC3EKn216ltchYy7O8sx1xqN-1m5Y9tOET5o6JYEEy-GxXOycYNjiM+g4zhXo2Tirma+5pZeCiubaK2Szm+u8JSeX5go87po62YcHfSNaplYuRo0eulpu5uLJKiV5j1zkGQFU5yiXvjYRekoJojrm1o2Vb+gJIignNhS7RMeaCbD4+aJKVovQts6Iwzcf7D-TJ4b7yw-SvIikn-WP18rNPb3OU3p1zZ9JtveksdOc5Ok3YhC51IlcI+cdwJu0vDZeuygkZvUJKAz+P8ZbGVGCaNUCJ1zNhFsTdO7kr7hhXMiRc7QCFgKcDxZGDNJSDklgkDKTV7iDzRCxE8c1-7iRHPCFELIIyIisMg0wwhLhGwsPoFE3gbRcKjBOTehVwIwUgEQAAzgAC2oAAd3sOwI0KJtCCgVDkBm-xS4LXEKwsCFJBSq2dksY0KE4LLy3iyNeUcjT-ERB0dGTgrQeOOrI6m+hu5m0jgREElcZYJDaOyFkQSQJRB4sIgoYEKF1AsGbCe8JrYUyiU5I0KT2ZfXSf4NU8N-aEmTuJcIuoimVlWgk+ydFr7-GWE0j4KsQ6XkFG7JY8YQ6Eg2B-VqtlmYEXPtQt6PiraxRJv7cIXj1wIExgRIi6IQ4yRcRFNUEsxziCUNfSocoRmpP0IPcQOgGaK3qaiaxLNRgdISjZJoMtYpzznGEJ5IjdSLHqf0eMbtHAslKQaQ+RyryiC5AEDIqNLxckqErCZiL9YVEWdfNFGp66Yt8mskSXYFlBQReBCICLCSvTWZYIkeS3a91dmSjKGL2nzORSS+pFQSVuyEZcLlY8pmFTGKc9wf4sW0TVN8w6aIRxCueFKvuYs5USvcOBJUXKbQMkfiKj5BEvDmAfAqnu+smxErFuqv45U5WavAn+cqjQJK2uOjDZ2rIQHlXVa-ZFVToEiXoWOXVQ0LUrTgVKpKBqiLlT2q3CZqRWDBpWlylWoadV7xkm62yjUDUbNNnapVzxjpUsDZEI1ZqZW6vREavegkLVoUMgq18oLlV6rjSOBtsqVr411SODFC92BqxAQnCZEgRW0SuOy8QMa00bDgSK1BfqQm9tNc2JaybwG5uNcQ016aO3nMkYuns5UExXDXWwqtYtAb+J1TIjdOrzmwq6CojR2iFadlbeu19IS0RuqXXA-4EgrW5C-V4DtMjU11sJNfLw4Eo1+pFbwvdNqxYMnCPU7lCHk1QeA82ACZ7pUodgyhpwGVS3qqMThyQEGbQCUA7dG9zlzWIZKZgh2aa-jbqGmu2DEG5QZGA6CCjWHS3CH6Fy39fsb0MjQ2OF2GpW0VCqDKy0MrJDwg7oVDkXIfEVLjsk19HQrAysiI4BRRgH2aJ0SWKCnsRzYpOcZisNkxi5t7kqDtOgVUIxON3DGy6-XW3ozqicmkJmrncQFqw4UpOCXEB2h4Kkv1oSc4JNC7KKjwm6UDXNywXn1wdjmepyxyM5anhglCaJJBKfDNlE0p5W2XgZHetZ4QlBKYypCIyLtC5XAQW8kBNGxyVH0Lm0QlhQNvKLdfUQbCZWiEeU5yIm58uAJHgeUUGppsRDMslBwBjGjXoKREJZMtAYZreRqPbFZUgRGvh+Fl+zGZAocFbTxvqsq2WfMfI0MqlDkWtE4LzYTptpnhW3Ayn1SWLhAdLJy-SC4oVzMIRsHhUUZTs3Iyx2q-XhGg-ZiQONTNPv7BI2TFh9UTJyj5i7g3MuiFxX61g+XakLrWaueVAW9FqweLdmpbDWzWYlEqabqRnITcu680elzPZ6Ke3KI2hQTtjiWAEVt1clT1Ojk6t5upZM6Ax-Z+nRtjrYjeg0IBUcMh9Yu+U-5GwmEoRSgOpy836JRy8vy0e4Ywj32mOvZy+t0iXGV+Fil-XUhZ3XNpMuMs0TgUD2mC9KdLiw7G2naSrkTyRE-Xb1SnFps6EqEZbevN0rQvvNaGYBmpUyokxA6Hm47FvI1f9Y5QQtKilPWsh4tkZVJbE05NEiZswPHtpZXNYUa4TJt0V4XE9cy4IRdcJvtT4-2YG1bUso2pPtLNGsr0yxunhGdzvyQJXWVKBDiYhr-W5TXi5JuHLyHxn9Z9YMjgXOowgqNJln19+PBpGYrTmpQFWrQUYQL-EYY8FmKiPJJTM6JnKTdEQ+bNDYbtP+WTMIBAbFWBV1Z1TOEOQSS8Azf3YHaNRwMXFfRZdlIgsdQsWlf3CAkg-4OBPTU3Bg+vSLIzag0PaFIzEOf3fJezfA-g9-f3KHCsWqLNMWR1bBEglQJvSaVnKTNxIQi8XMAIAzRFWTDmF7d-fAp2Bg3vAQwSPQ9ggIPAlQYgkw7fJyCOd7NZVIcMHLNQ0hRrL4IrBIR-cScMJQWrLHQOJxPWNWXCBnenTLQUcQWTCoP4ObSIPw4LNzFLZQNg+zSIDPU2BkWIxQ1cAzRYQsH2HICw5I9oVTJyS5DIi7bwOUR8Y6WwqTJdXNF0CbGYfLNEXXGqHqCLcSRYZwqTWyYMW1YeOBP4KVA9f3YfNIfRMWU8GvcSWQmonHS4DXRQzcRoAvRYisUEEOE4cHMnbbCHHibuLwArA9cwB3CsJeUWNZdET3TuCIdse9NRMzBQcCM2Ro-oWtGWbKMPSWK7fGQ5M2BFY6VFauCkCoXdCJJdPpcMVoqcbaDfPXAtN6Z425G0dgVtVOQ7FObQBHRcK7PHB4gnRQAeabR1LMdcKIZTaFLwf6EYIjCNP8bAmWfpUnUeTcUQmqJ8OEuRJwYdLeP8FvcGDA2aF2JvfqI5fqBTIHA3P5QHGYa474lKa0cMWlLyU0H2erbpRwbFS4P8ZXT7U49SVVaIVRDAAAJzoAAGMsBIATSSAABrSAAAfS0SgHUQdNQEwCAA&page='+str(page),'')
+	if 'data' in data: process_movies_series(data['data'])
+	if 'pagination' in data and 'pageCount' in data['pagination'] and 'page' in data['pagination'] and data['pagination']['pageCount']>1:
+		add_paging(int(data['pagination']['page'])+1, data['pagination']['pageCount'])
+elif action[0] == 'vanocecr':
+	data = get_media_data('/api/media/filter/service?limit=50&type=%2A&value=movie%3A4280&value=movie%3A9341&value=movie%3A35625&value=movie%3A272509&value=movie%3A34555&value=movie%3A32701&value=movie%3A23529&value=movie%3A31548&value=movie%3A36520&value=movie%3A27237&value=movie%3A85216&value=movie%3A167774&value=movie%3A227264&value=movie%3A149260&value=movie%3A280128&value=movie%3A38476&value=movie%3A23587&value=movie%3A424048&value=movie%3A345630&value=movie%3A61885&value=movie%3A81089&value=movie%3A174346&value=movie%3A146037&value=movie%3A64330&value=movie%3A64331&value=movie%3A3146&value=movie%3A32018&value=movie%3A93281&value=movie%3A58475&value=movie%3A57383&value=movie%3A62959&value=movie%3A35540&value=movie%3A77637&value=movie%3A167362&value=movie%3A61886&value=movie%3A61521&value=movie%3A32981&value=movie%3A345579&value=movie%3A318955&value=movie%3A36735&value=movie%3A64106&value=movie%3A184122&value=movie%3A103574&value=movie%3A23504&value=movie%3A23503&value=movie%3A103569&value=movie%3A98501&value=movie%3A86853&value=movie%3A182684&value=movie%3A484259&value=movie%3A152208&value=movie%3A141198&value=movie%3A416817&value=movie%3A61024&value=movie%3A39479&value=movie%3A195296&value=movie%3A101324&value=tvshow%3A61414&value=movie%3A64332&value=movie%3A291928&value=movie%3A356682&value=movie%3A224571&value=movie%3A490792&value=movie%3A203450&value=movie%3A58442&value=movie%3A599569&value=movie%3A12849&service=trakt_with_type&page='+str(page),'')
+	if 'data' in data: process_movies_series(data['data'])
+	if 'pagination' in data and 'pageCount' in data['pagination'] and 'page' in data['pagination'] and data['pagination']['pageCount']>1:
+		add_paging(int(data['pagination']['page'])+1, data['pagination']['pageCount'])
 elif action[0] == 'folder':
 	if action_value[0] in menu:
 		for c in menu[action_value[0]]:
@@ -771,6 +809,6 @@ elif action[0] == 'search':
 elif action[0] == 'play' and action_value[0] != "" and name !="":
 	play(action_value[0],name)
 
-if len(client.GItem_lst[0]) == 0:
-	render_item(build_item(None, ''))
+#if len(client.GItem_lst[0]) == 0:
+#	render_item(build_item(None, ''))
 #	client.showInfo('Nic nenalezeno')
