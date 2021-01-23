@@ -56,6 +56,7 @@ def main_menu(pageurl, list_only=False):
 
 
 def shows_menu(pageurl, list_only=False):
+    add_dir("[COLOR red]Tento doplněk již není podporován, použijte nový iPrima.cz[/COLOR]", {'action': '', 'linkurl': ''}, os.path.join(_addon_.getAddonInfo('path'), 'cross.png'), infoLabels={'plot':'Tento doplněk již není podporován a bude brzy zrušen a odstraněn z archivu, použijte nový iPrima.cz'})
     ch = {}
     html = _play_parser.get_data_cached('https://www.iprima.cz', _play_parser.useCache, 3)
     sections = re.findall("molecule--list--live-broadcasting-list--item\".*?<a .*?data-trueview-id=\"HP - TV Channels - (.*?)\".*?--item--time\">(.*?)</span>(.*?)</a>.*?--item--time\">(.*?)</span>", html, re.S)
@@ -238,12 +239,11 @@ def resolve_videos(link):
     result = resolver.filter_by_quality(result, _quality)
     if len(result) > 0:
         for videoItem in result:
-            add_video(videoItem['title'],videoItem['url'])
+            add_video(videoItem['title'],videoItem['url'],infoLabels={'title': re.sub("[\[].*?[\]]", "", videoItem['title'])})
 
 
 def get_menu_link(**kwargs):
     return kwargs
-
 
 action = params.get('action')
 linkurl = params.get('linkurl')
