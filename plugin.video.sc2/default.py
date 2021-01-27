@@ -19,7 +19,6 @@ addon = ArchivCZSK.get_xbmc_addon('plugin.video.sc2')
 addon_userdata_dir = addon.getAddonInfo('profile')+'/'
 home = addon.getAddonInfo('path')
 christmas = datetime.date(datetime.date.today().year, 12, 20) <= datetime.date.today() <= datetime.date(datetime.date.today().year+1, 1, 6)
-#icon = os.path.join(home, 'icon-christmas.png')
 icon = os.path.join(home, 'icon.png')
 hotshot_url = 'https://plugin.sc2.zone'
 ws_api = 'https://webshare.cz/api'
@@ -196,9 +195,10 @@ def get_info(media,st=False):
 		title = ' ' + media['info_labels']['originaltitle'] + langs if 'info_labels' in media and 'originaltitle' in media['info_labels'] and title == "" else title
 	setitle = ""
 	if 'info_labels' in media and 'episode' in media['info_labels'] and media['info_labels'].get('mediatype') != "movie":
-		if int(media['info_labels']['season']) == 0: setitle = str(int(media['info_labels']['episode'])).zfill(2)+' '
-		elif int(media['info_labels']['season']) != 0: setitle = str(int(media['info_labels']['season'])).zfill(2)+'x'+str(int(media['info_labels']['episode'])).zfill(2)+' '
+		if int(media['info_labels'].get('season',0)) == 0: setitle = str(int(media['info_labels']['episode'])).zfill(2)+' '
+		elif int(media['info_labels'].get('season',0)) > 0: setitle = str(int(media['info_labels']['season'])).zfill(2)+'x'+str(int(media['info_labels']['episode'])).zfill(2)+' '
 	fulltitle = parent + setitle + title + ' (' + str(year) + ')'
+	if title == '' and setitle != '': title = setitle
 	if not st: title += ' - ' + langs + ' (' + str(year) + ')'
 	genres = ""
 	if 'info_labels' in media and 'genre' in media['info_labels']:
@@ -640,13 +640,13 @@ except:
 #writeLog('NAME: '+str(name))
 #writeLog('ACT: '+str(action))
 #writeLog('ACTVAL: '+str(action_value))
-print params
+#print params
 
 menu = {
 	'root': [
 		build_item(addon.getLocalizedString(30204), 'listsearch', ''),
-		build_item('Vánoce', 'vanoce', '0'),
-		build_item('Vánoce (Česko)', 'vanocecr', '0'),
+#		build_item('Vánoce', 'vanoce', '0'),
+#		build_item('Vánoce (Česko)', 'vanocecr', '0'),
 		build_item(addon.getLocalizedString(30200), 'folder','movies'),
 		build_item(addon.getLocalizedString(30201), 'folder', 'series'),
 		build_item(addon.getLocalizedString(30174), 'folder', 'concerts'),
@@ -809,6 +809,6 @@ elif action[0] == 'search':
 elif action[0] == 'play' and action_value[0] != "" and name !="":
 	play(action_value[0],name)
 
-#if len(client.GItem_lst[0]) == 0:
-#	render_item(build_item(None, ''))
+if len(client.GItem_lst[0]) == 0:
+	render_item(build_item(None, ''))
 #	client.showInfo('Nic nenalezeno')
