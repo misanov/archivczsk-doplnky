@@ -10,7 +10,9 @@ Open Google Chrome browser:
 - On the left hand side of the popup select Cookies in the Storage section
 - Locate the 'st' cookie Name under https://www.eurosportplayer.com and copy it's Value
 
-Stop Enigma2 (by running command in telnet: init 4)
-Open /etc/enigma2/settings file on satellite box (by telnet or ftp)
-Insert copied value at new line started with config.plugins.archivCZSK.archives.plugin_video_eurosport.eurosporttoken=
-Start Enigma2 (by running command in telnet: init 3)
+Open Enigma box (log into box by telnet):
+- Stop Enigma2 (by running command: init 4)
+- Open /etc/enigma2/settings file by any editor (vi)
+- Insert copied value at new line started with config.plugins.archivCZSK.archives.plugin_video_eurosport.eurosporttoken=
+- Save settings file and close editor
+- Start Enigma2 (by running command: init 3)
