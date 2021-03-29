@@ -90,6 +90,7 @@ def program(nid):
 	programDetail = helpers.requestResource( 'program_by_id', page=page, postOptions={'nid': nid} )
 	if page == 0:
 		for season in programDetail['seasons'] or []:
+			print("SEASON:",season)
 			addDir(season, '/sublisting/{0}/{1}/'.format(nid, season.replace('/', '%2F')), 1, None)
 		bonuses = helpers.requestResource( 'bonus', postOptions={'programId': nid, 'count': 1} )
 		if len(bonuses) > 0:
@@ -201,7 +202,7 @@ adr = url.split('/')
 #print('PAGE: ',page)
 
 lookups.shared['pagination'] = lookups.settings['pagination_options'][int(addon.getSetting('pagination'))]
-credentialsAvailable = helpers.performCredentialCheck()
+credentialsAvailable = auth.performCredentialCheck()
 if credentialsAvailable:
 	router(url)
 else:
